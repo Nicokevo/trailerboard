@@ -1,9 +1,13 @@
+# VS / .NET
 .vs/
 bin/
 obj/
 TestResults/
+
+# SQLite local
 trailerboard.db
 
+# Frontend (si/ cuando lo agregues)
 frontend/node_modules/
 frontend/dist/
 

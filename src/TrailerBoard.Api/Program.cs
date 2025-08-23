@@ -1,41 +1,48 @@
-var builder = WebApplication.CreateBuilder(args);
+﻿using TrailerBoard.Infrastructure;
+using TrailerBoard.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using TrailerBoard.Application;  
+using TrailerBoard.Contracts;   
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
+
+var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
+
+// EF Core (Infrastructure)
+builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+var api = app.MapGroup("/api");
+
+api.MapGet("/movies", (IAppDbContext db, string? query) =>
+{
+    var q = db.Movies;
+    if (!string.IsNullOrWhiteSpace(query))
+        q = q.Where(m => EF.Functions.Like(m.Title, $"%{query}%"));
+
+    var list = q.OrderBy(m => m.Title)
+        .Select(m => new MovieDto(m.PublicId, m.Title, m.Year, m.PosterUrl, m.TrailerUrl))
+        .ToList();
+
+    return Results.Ok(list);
+})
+.WithName("GetMovies");
+
+
+// migrate + seed
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<TrailerDbContext>();
+    db.Database.Migrate();
+    DbSeeder.Seed(db);
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

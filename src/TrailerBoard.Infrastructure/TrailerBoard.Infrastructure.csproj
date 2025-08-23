@@ -19,5 +19,12 @@
     <ProjectReference Include="..\TrailerBoard.Application\TrailerBoard.Application.csproj" />
     <ProjectReference Include="..\TrailerBoard.Domain\TrailerBoard.Domain.csproj" />
   </ItemGroup>
+	<ItemGroup>
+  <EmbeddedResource Include="Seed\movies.json" />
+</ItemGroup>
+
+	<ItemGroup>
+    <Folder Include="Seed\" />
+  </ItemGroup>
 
 </Project>
