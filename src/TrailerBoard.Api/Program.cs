@@ -1,9 +1,13 @@
-﻿// ── Usings (infraestructura, EF, DTOs y JWT) ───────────────────────────────────
-using Microsoft.EntityFrameworkCore;
-using TrailerBoard.Infrastructure;         // AddInfrastructure()
-using TrailerBoard.Infrastructure.Data;    // TrailerDbContext, DbSeeder
-using TrailerBoard.Application;            // IAppDbContext
-using TrailerBoard.Contracts;              // DTOs
+﻿using Microsoft.EntityFrameworkCore;
+using TrailerBoard.Infrastructure;         
+using TrailerBoard.Infrastructure.Data;    
+using TrailerBoard.Application;           
+using TrailerBoard.Contracts;             
+using TrailerBoard.Api.Errors;
+using TrailerBoard.Api.Validation;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using TrailerBoard.Application.Favorites;
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -11,15 +15,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
-// ── Builder + Servicios (OpenAPI, Infra/EF, Auth) ──────────────────────────────
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();             // OpenAPI del template
+builder.Services.AddOpenApi();            
 
-// EF Core (registrado desde la capa Infrastructure)
+
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// JWT (dev): leemos config y registramos autenticación
 var jwt = builder.Configuration.GetSection("Jwt");
 var signingKey = new SymmetricSecurityKey(
     Encoding.UTF8.GetBytes(jwt["Key"] ?? throw new InvalidOperationException("Missing Jwt:Key")));
@@ -42,18 +45,19 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddProblemDetailsWithMappings();
+builder.Services.AddValidatorsFromAssemblyContaining<TrailerBoard.Application.Validation.LoginRequestValidator>();
 
-// ── Build + bootstrap de base de datos (migrar + seed) ─────────────────────────
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TrailerDbContext>();
     db.Database.Migrate();
-    DbSeeder.Seed(db); // inserta desde JSON embebido si está vacío
+    DbSeeder.Seed(db);
 }
 
-// OpenAPI solo en Development (y evitamos el warning de HTTPS en dev)
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -63,14 +67,17 @@ else
     app.UseHttpsRedirection();
 }
 
-// Middlewares de auth
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.UseGlobalExceptionHandler();
 
-// ── Endpoints ──────────────────────────────────────────────────────────────────
+static string? GetEmail(ClaimsPrincipal user) =>
+    user.FindFirstValue(ClaimTypes.Email) ?? user.FindFirstValue(JwtRegisteredClaimNames.Email);
 var api = app.MapGroup("/api");
 
-// 1) Público: listado de películas con filtro opcional (?query=)
+
 api.MapGet("/movies", (IAppDbContext db, string? query) =>
 {
     var q = db.Movies;
@@ -85,7 +92,7 @@ api.MapGet("/movies", (IAppDbContext db, string? query) =>
 })
 .WithName("GetMovies");
 
-// 2) Auth: login que emite un JWT HS256 (dev)
+
 api.MapPost("/auth/login", (LoginRequest req) =>
 {
     if (string.IsNullOrWhiteSpace(req.Email) ||
@@ -113,7 +120,7 @@ api.MapPost("/auth/login", (LoginRequest req) =>
 })
 .WithName("Login");
 
-// 3) Protegido de ejemplo: /api/me (requiere Authorization: Bearer <token>)
+
 api.MapGet("/me", (ClaimsPrincipal user) =>
 {
     var email = user.FindFirstValue(ClaimTypes.Email)
@@ -123,4 +130,29 @@ api.MapGet("/me", (ClaimsPrincipal user) =>
 .RequireAuthorization()
 .WithName("Me");
 
+api.MapPost("/favorites", async (AddFavoriteRequest req, IFavoritesService svc, ClaimsPrincipal user, CancellationToken ct) =>
+{
+    var email = GetEmail(user);
+    if (string.IsNullOrWhiteSpace(email)) return Results.Unauthorized();
+
+    var dto = await svc.AddAsync(email, req.PublicId, ct);   // 201 si ok
+    return Results.Created($"/api/favorites/{dto.PublicId}", dto);
+})
+.AddEndpointFilter(new ValidationFilter<AddFavoriteRequest>())
+.RequireAuthorization()
+.WithName("AddFavorite");
+
+
+api.MapGet("/favorites", async (IFavoritesService svc, ClaimsPrincipal user, CancellationToken ct) =>
+{
+    var email = GetEmail(user);
+    if (string.IsNullOrWhiteSpace(email)) return Results.Unauthorized();
+
+    var list = await svc.ListAsync(email, ct);
+    return Results.Ok(list);
+})
+.RequireAuthorization()
+.WithName("ListFavorites");
+
 app.Run();
+
