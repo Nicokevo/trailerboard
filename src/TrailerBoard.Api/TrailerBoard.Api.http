@@ -4,3 +4,17 @@ GET {{TrailerBoard.Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+@host = http://localhost:5062
+
+### Login OK
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo@tb.com",
+  "password": "secret1"
+}
+
+### Me (pegá el token del login aquí abajo)
+GET {{host}}/api/me
+Authorization: Bearer PON_AQUI_TOKEN
