@@ -1,0 +1,28 @@
+@host = http://localhost:5062
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vQHRiLmNvbSIsImVtYWlsIjoiZGVtb0B0Yi5jb20iLCJqdGkiOiJjMGNlYjlmYS04YThhLTQwMWEtYjM1OC1mMDRlZGIwMWQyZWMiLCJleHAiOjE3NTYxMDY4OTUsImlzcyI6IlRyYWlsZXJCb2FyZCIsImF1ZCI6IlRyYWlsZXJCb2FyZC5DbGllbnQifQ.OJw-N7voCu_a2-eyE4nUGpm2ynNEvKenkAJOMpswN_Q
+
+### Login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo@tb.com",
+  "password": "secret1"
+}
+
+### Me
+GET {{host}}/api/me
+Authorization: Bearer {{token}}
+
+### Add Favorite (Inception)
+POST {{host}}/api/favorites
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "publicId": "MOV-INCEPTION"
+}
+
+### List Favorites
+GET {{host}}/api/favorites
+Authorization: Bearer {{token}}
