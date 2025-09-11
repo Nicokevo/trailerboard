@@ -1,13 +1,12 @@
 using FluentValidation;
+using TrailerBoard.Application.Validation;
 using TrailerBoard.Contracts;
-
-namespace TrailerBoard.Application.Validation;
 
 public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
 {
     public LoginRequestValidator()
     {
-        RuleFor(x => x.Email).NotEmpty().EmailAddress();
-        RuleFor(x => x.Password).NotEmpty().MinimumLength(6);
+        RuleFor(x => x.Email).IsValidEmail();
+        RuleFor(x => x.Password).IsValidPassword();
     }
 }

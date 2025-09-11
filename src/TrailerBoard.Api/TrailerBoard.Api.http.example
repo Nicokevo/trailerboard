@@ -1,5 +1,17 @@
 @host = http://localhost:5062
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vQHRiLmNvbSIsImVtYWlsIjoiZGVtb0B0Yi5jb20iLCJqdGkiOiJjMGNlYjlmYS04YThhLTQwMWEtYjM1OC1mMDRlZGIwMWQyZWMiLCJleHAiOjE3NTYxMDY4OTUsImlzcyI6IlRyYWlsZXJCb2FyZCIsImF1ZCI6IlRyYWlsZXJCb2FyZC5DbGllbnQifQ.OJw-N7voCu_a2-eyE4nUGpm2ynNEvKenkAJOMpswN_Q
+@token = {{token}}
+
+### Register
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "demo@tb.com",
+  "password": "secret1",
+  "confirmPassword": "secret1",
+  "firstName": "Demo",
+  "lastName": "User"
+}
 
 ### Login
 POST {{host}}/api/auth/login
@@ -10,12 +22,12 @@ Content-Type: application/json
   "password": "secret1"
 }
 
-### Me
-GET {{host}}/api/me
+### Current User (me)
+GET {{host}}/api/auth/current
 Authorization: Bearer {{token}}
 
 ### Add Favorite (Inception)
-POST {{host}}/api/favorites
+POST {{host}}/api/favorite
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
@@ -24,5 +36,9 @@ Content-Type: application/json
 }
 
 ### List Favorites
-GET {{host}}/api/favorites
+GET {{host}}/api/favorite
+Authorization: Bearer {{token}}
+
+### Remove Favorite (Inception)
+DELETE {{host}}/api/favorite/MOV-INCEPTION
 Authorization: Bearer {{token}}
